@@ -1,0 +1,3 @@
+# AI transparency: what did I do with AI and what not
+
+@realclawy - Almost all of my code was written by hand. In the moment of writing, with the codebase having around 350 lines, I have only made one of the functions (the one that gets the volume) with AI. And even there, I did not copy paste; instead, I took the time to read, understand and port the function provided by the AI to the codebase in an adequate manner, even adding an unsafe{} optimization. I have one other function which I have generated with AI which is not ported yet, but I'm going to take the time to understand it and port it correctly.
