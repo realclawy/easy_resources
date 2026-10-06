@@ -24,7 +24,7 @@ pub async fn get_painted(col: &str, string: &str) -> String {
         "aqua" => format!("{AQUA}{string}{END}"),
         "white" => format!("{WHITE}{string}{END}"),
 
-        &_ => {throw_error("WHAT THAT SHOULDN'T HAPPEN", -1).await; unreachable!()}
+        &_ => {throw_error("WHAT THAT SHOULDN'T HAPPEN", -1); unreachable!()}
     }
 }
 

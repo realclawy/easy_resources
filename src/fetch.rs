@@ -18,7 +18,7 @@ pub async fn cpu_usage(system: &System, load: Option<Cpu>) -> Cpu {
                 next: next_cpu
             }
         }
-        Err(_) => {throw_error("failed to measure CPU load...\n", 6).await; unreachable!()}
+        Err(_) => {throw_error("failed to measure CPU load...\n", 6); unreachable!()}
     }
 }
 
@@ -28,7 +28,7 @@ pub async fn mem_usage(system: &System) -> String {
             format!("{} / {}", saturating_sub_bytes(mem.total, mem.free), mem.total)
         },
         Err(x) => {
-            throw_error(format!("memory error\n{}", x).as_str(), 8).await; unreachable!()
+            throw_error(format!("memory error\n{}", x).as_str(), 8); unreachable!()
         }
     }
 }
@@ -36,7 +36,7 @@ pub async fn mem_usage(system: &System) -> String {
 pub async fn uptime(system: &System) -> String {
     match system.uptime() {
         Ok(uptime) => {format!("Awake for {} seconds", uptime.as_secs().to_string().parse::<f32>().expect("eh?") / 3600.0)},
-        Err(_) => {throw_error("could not get uptime...", 8).await; unreachable!()}
+        Err(_) => {throw_error("could not get uptime...", 8); unreachable!()}
     }
 }
 
@@ -86,8 +86,10 @@ pub async fn sound_level() -> String {
         .unwrap();
     volume.to_string()
     } else {
-        throw_error("We weren't able to get your volume level.\nIf you're on Linux, try installing alsa-utils.\nIf you're on Windows, we sadly can't provide sound level...", 0).await; unreachable!()
+        throw_error("We weren't able to get your volume level.\nIf you're on Linux, try installing alsa-utils.\nIf you're on Windows, we sadly can't provide sound level...", 0); unreachable!()
     }
 }
 
-//pub async fn 
+/*pub async fn gpu_usage() -> String {
+
+} */

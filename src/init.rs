@@ -10,7 +10,7 @@ pub async fn config() -> (PathBuf, Vec<String>) {
     match dirs::config_dir() {
         Some(config_path) => config_dir = config_path,
         None => {
-            throw_error("config directory is not reachable. This is probably either the library's fault or your computer's.", 1).await;
+            throw_error("config directory is not reachable. This is probably either the library's fault or your computer's.", 1);
             unreachable!();
         }
     }
@@ -25,7 +25,7 @@ pub async fn config() -> (PathBuf, Vec<String>) {
             Err(err) => {
                     throw_error(
                         format!("config directory is not writtable to. It might be fine to run with admin, but since this is a random program you should probably not do that...\nThis is what the error says: {err}").as_str(), 2
-                    ).await; unreachable!()
+                    ); unreachable!()
                 }
         }
         config::read(config_dir).await
@@ -45,8 +45,8 @@ pub async fn fetch_args() -> (String, String) {
     if arg_num == 3 { // the vector had an additional argument, which is the command call path
         (args.next().unwrap(), args.next().unwrap())
     } else if arg_num < 2 {
-        throw_error("not enough arguments provided", 3).await; unreachable!()
+        throw_error("not enough arguments provided", 3); unreachable!()
     } else {
-        throw_error("too many arguments...", 4).await; unreachable!()
+        throw_error("too many arguments...", 4); unreachable!()
     }
 }
