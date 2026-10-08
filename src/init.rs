@@ -1,10 +1,9 @@
 use crate::error_handling::*;
-use crate::config;
 use std::env;
 use std::path::PathBuf;
 use std::fs;
 
-pub async fn config() -> (PathBuf, Vec<String>) {
+pub async fn config() -> PathBuf {
     let mut config_dir: PathBuf;
 
     match dirs::config_dir() {
@@ -18,7 +17,7 @@ pub async fn config() -> (PathBuf, Vec<String>) {
     config_dir.push("easy_resources");
 
     if config_dir.exists() { 
-        config::read(config_dir).await
+        config_dir
     } else {
         match fs::create_dir(&config_dir) {
             Ok(_) => {},
@@ -28,7 +27,7 @@ pub async fn config() -> (PathBuf, Vec<String>) {
                     ); unreachable!()
                 }
         }
-        config::read(config_dir).await
+        config_dir
     }
 }
 

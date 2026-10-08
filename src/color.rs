@@ -61,7 +61,7 @@ pub async fn ask() -> String {
                 buffer.clear();
             }
         }
-    }; // now the buffer is parsed... Supposedly, AI did something really strange tbh
+    }; // now the buffer is parsed... Supposedly
 
     match buffer {
         1 => "black".to_string(),

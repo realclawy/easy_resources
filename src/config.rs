@@ -7,7 +7,7 @@ use std::time::Duration;
  * config path (PathBuf)
  * a list of all existing .conf files
 */
-pub async fn read(config_path: PathBuf) -> (PathBuf, Vec<String>) {
+pub async fn read(config_path: &PathBuf) -> Vec<String> {
     let paths = config_path.read_dir().unwrap_or_else(|err| {
         eprintln!("No idea what happened here just read Rust's error:\n{err}");
         std::process::exit(3);
@@ -22,11 +22,9 @@ pub async fn read(config_path: PathBuf) -> (PathBuf, Vec<String>) {
                 Some(name) => sets.push(name),
                 None => { continue; }
             }
-        } else {
-            continue;
         }
     }
-    (config_path, sets)
+    sets
 }
 
 // If the termination is .conf it returns the file's name. If it isn't it returns nothing
