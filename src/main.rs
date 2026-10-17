@@ -1,4 +1,3 @@
-use systemstat::{Platform, System};
 mod init;
 mod config;
 mod error_handling;
@@ -18,7 +17,7 @@ pub fn clear() {
 
 #[tokio::main]
 async fn main() {
-    let mut config_dir = init::config().await;
+    let config_dir = init::config().await;
     let (option, set) = init::fetch_args().await;
 
     match option.as_str() {

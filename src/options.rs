@@ -1,4 +1,11 @@
-use crate::{clear, color, config, error_handling::throw_error};
+use crate::{
+    clear, // Function for clearing the screen.  TODO: make a screen.rs lib file
+    color, // colored print
+    config, // get things about the config file.  NOTE: mayybe reduce "run" size by putting slices here
+    error_handling::throw_error,
+    fetch, // get arguments given
+    structs::*
+};
 use std::{io::{Write, stdin}, path};
 use path::PathBuf;
 use systemstat::{Platform, System};
@@ -21,15 +28,16 @@ pub async fn rename(config_dir: PathBuf, set: String) {
 
     let mut new_name = String::new();
     std::io::stdin().read_line(&mut new_name).expect("dude");
+    let new_name = path::PathBuf::from(format!("{:?}.conf", config_dir));
 
     if config_file.exists() {
-        if !path::PathBuf::from(format!("{:?}.conf", &config_dir)).exists() {
-            todo!()
+        if !new_name.exists() {
+            fs::rename(config_file, new_name).unwrap_or_else(|_| {throw_error("Couldn't rename it. This is likely a perms issue...", 22);});
         } else {
-            throw_error("set that already has that name was found.", 6);
+            throw_error("set that already has that name was found.", 6); unreachable!()
         }
     } else {
-        throw_error("That file doesn't exist...", 5); unreachable!()
+        throw_error("That set doesn't exist...", 5); unreachable!()
     }
 }
 
@@ -72,6 +80,7 @@ pub async fn make(mut config_dir: PathBuf, set: String) {
             println!("What process would you like to show in slot number {i}?:");
             println!("cu: CPU usage");
             println!("ct: CPU temperature");
+            println!("gu: GPU usage (W.I.P)");
             println!("mu: memory usage");
             println!("up: uptime");
             println!("bt: battery (only if you actually have a battery)");
@@ -113,16 +122,6 @@ pub async fn make(mut config_dir: PathBuf, set: String) {
     });
 }
 
-struct Date {
-    display: bool,
-    american: bool,
-    color: String
-}
-
-struct Widget {
-    widget_type: String,
-    color: String
-}
 pub async fn run(mut config_dir: PathBuf, set: String) {
     //  NOTE: Open/read file
     let system = System::new();
@@ -154,8 +153,8 @@ pub async fn run(mut config_dir: PathBuf, set: String) {
     };
 
     // Check for enough lines
-    if buffer.lines().count() != 5 {
-        throw_error("wrong quantity of arguments in the config file.", 14);
+    if buffer.lines().count() < 5 {
+        throw_error("not enough arguments in the config file.", 14);
     }
 
     let mut buffer = buffer.lines(); // Get the lines; there should be 5: date display and 4 widgets
@@ -202,6 +201,14 @@ pub async fn run(mut config_dir: PathBuf, set: String) {
     }
 
 
-    //  TODO: ncurses display
+    // Pre-display
+    let (time_display, widget_1, widget_2, widget_3, widget_4) = tokio::join!(
+        fetch::time(date.display, date.american),
+        fetch::get(&system, &widgets[0], None),
+        fetch::get(&system, &widgets[1], None),
+        fetch::get(&system, &widgets[2], None),
+        fetch::get(&system, &widgets[3], None)
+    );
+    //  TODO: display
     todo!()
 }
