@@ -1,5 +1,5 @@
 use crate::{
-    clear, // Function for clearing the screen.  TODO: make a screen.rs lib file
+    screen,
     color, // colored print
     config, // get things about the config file.  NOTE: mayybe reduce "run" size by putting slices here
     error_handling::throw_error,
@@ -48,7 +48,7 @@ pub async fn make(mut config_dir: PathBuf, set: String) {
     //  NOTE: DATE + HOUR
     print!("do you want the hour to be displayed? (Y/n) ");
     let mut have_hour_ans = String::new();
-    std::io::stdout().flush().unwrap();
+    screen::flush();
     stdin().read_line(&mut have_hour_ans).expect("DUDE");
     let have_hour_ans = have_hour_ans.trim();
     println!();
@@ -56,7 +56,7 @@ pub async fn make(mut config_dir: PathBuf, set: String) {
     if !have_hour_ans.eq_ignore_ascii_case("n") && !have_hour_ans.eq_ignore_ascii_case("no") {
         let mut type_of_date = String::new();
         print!("Would you like the date displayed in american (MM-DD-YYYY) or european (DD-MM-YYYY) format? (a/E) ");
-        std::io::stdout().flush().unwrap(); // If you don't flush it will not work ig?
+        screen::flush();
         stdin().read_line(&mut type_of_date).expect("DUDE");
         let type_of_date = type_of_date.trim();
         println!();
@@ -72,7 +72,7 @@ pub async fn make(mut config_dir: PathBuf, set: String) {
     }
     let _ = have_hour_ans;
 
-    clear();
+    screen::clear();
 
     //  NOTE: PROCESSES
     for i in 1..=4 {
@@ -87,7 +87,7 @@ pub async fn make(mut config_dir: PathBuf, set: String) {
             println!("sd: sound level");
             println!("no: nothing");
             print!("answer with the 2-letter word: ");
-            std::io::stdout().flush().unwrap();
+            screen::flush();
             let mut process_to_show = String::new();
             stdin().read_line(&mut process_to_show).expect("DUDE");
             let process_to_show = process_to_show.trim().to_ascii_lowercase();
@@ -96,12 +96,12 @@ pub async fn make(mut config_dir: PathBuf, set: String) {
                 "cu"|"ct"|"mu"|"up"|"bt"|"sd" => {
                     let process_n_color = color::ask().await;
                     config_file_buffer.push_str((process_to_show.to_string() + " " + process_n_color.as_str() + "\n").as_str());
-                    clear();
+                    screen::clear();
                     break;
                 },
                 "no" => {
                     config_file_buffer.push_str((process_to_show.to_string() + "\n").as_str());
-                    clear();
+                    screen::clear();
                     break;
                 },
                 _ => {
@@ -179,11 +179,11 @@ pub async fn run(mut config_dir: PathBuf, set: String) {
 
     // widgets
     for n in 0..=3 { // 4 loops. I'd do 0..4 but I'm scared it won't work lol
+        let widget_raw: Vec<&str>;
         // Get a line with actual config in case people add spaces for readability or smth
-        let mut widget_raw: Vec<&str> = Vec::new();
         loop {
             let buffer_line = buffer.next().unwrap();
-            if !widget_raw.is_empty() {
+            if !buffer_line.is_empty() {
                 widget_raw = buffer_line.split(" ").collect();
                 break;
             }
@@ -202,13 +202,37 @@ pub async fn run(mut config_dir: PathBuf, set: String) {
 
 
     // Pre-display
-    let (time_display, widget_1, widget_2, widget_3, widget_4) = tokio::join!(
-        fetch::time(date.display, date.american),
+    let (mut time_display, mut widget_1, mut widget_2, mut widget_3, mut widget_4) = tokio::join!(
+        fetch::time(date.display, date.american, &date.color),
         fetch::get(&system, &widgets[0], None),
         fetch::get(&system, &widgets[1], None),
         fetch::get(&system, &widgets[2], None),
         fetch::get(&system, &widgets[3], None)
     );
+
+
     //  TODO: display
-    todo!()
+    loop {
+        screen::display(
+            &time_display,
+            &widget_1,
+            &widget_2,
+            &widget_3,
+            &widget_4,
+        ).await;
+
+        // Wait a sec before updating (async version =D)
+
+        // update date and widgets
+        (time_display, widget_1, widget_2, widget_3, widget_4) = tokio::join!(
+            fetch::time(date.display, date.american, &date.color),
+            fetch::get(&system, &widgets[0], widget_1.next),
+            fetch::get(&system, &widgets[1], widget_2.next),
+            fetch::get(&system, &widgets[2], widget_3.next),
+            fetch::get(&system, &widgets[3], widget_4.next)
+        );
+        tokio::time::sleep(
+            tokio::time::Duration::from_secs(1)
+        ).await;
+    }
 }

@@ -1,19 +1,18 @@
-mod init;
-mod config;
+// lib
+mod init; // starting processes
+mod config; // configuration handling
 mod error_handling;
 use error_handling::throw_error;
-mod options;
-mod fetch;
+mod options; // Options when the command is ran
+mod fetch; // getting the command arguments
 mod structs;
-mod color;
+mod color; // Colour logic
+mod screen; // Screen handling logic
 
 // I'm creating these like this because I already have too many libraries
 // (and I don't want yet another one)
 const ERROR: &str = "\x1b[31mError:\x1b[0m"; // "Error:" with red letters
 const WARN: &str = "\x1b[33mWarning:\x1b[0m"; // "Warning:" with orange letters
-pub fn clear() {
-    println!("\x1B[2J\x1B[H"); // This clears the screen and puts the curson at the start
-}
 
 #[tokio::main]
 async fn main() {

@@ -1,4 +1,5 @@
 use chrono::Utc;
+use gfxinfo::active_gpu;
 use systemstat::{Platform, System, saturating_sub_bytes};
 use systemstat::{DelayedMeasurement, CPULoad};
 use std::process::Command;
@@ -9,13 +10,13 @@ pub async fn cpu_usage(system: &System, load: Option<DelayedMeasurement<CPULoad>
     let mut current_usage = 0.0;
     if let Some(current_cpu) = load {
         let current_cpu = current_cpu.done().unwrap(); //  TODO: Maybe this needs error handling?
-        current_usage = (100.0 - current_cpu.idle * 1000.0).round() / 10.0;
+        current_usage = ((100.0 - current_cpu.idle * 100.0) * 10.0).round() / 10.0;
     }
 
     match system.cpu_load_aggregate() {
         Ok(next_cpu) => {
             WidgetDisplay {
-                current: format!("CPU: {current_usage}"),
+                current: format!("CPU: {current_usage}%"),
                 next: Some(next_cpu)
             }
         }
@@ -23,9 +24,12 @@ pub async fn cpu_usage(system: &System, load: Option<DelayedMeasurement<CPULoad>
     }
 }
 
+// TODO: find a way to make this work ig? It might be a my side error but idk
 pub async fn cpu_temp(system: &System) -> WidgetDisplay {
     match system.cpu_temp() {
-        Ok(temp) => WidgetDisplay { current: format!("CPU temp: {}", (temp * 10.0).round() / 10.0), next: None},
+        Ok(temp) => {
+            WidgetDisplay { current: format!("CPU temp: {}°C", temp), next: None}
+        },
         Err(_) => {
             throw_error("Could not get CPU temperature...", 19); unreachable!()
         }
@@ -50,7 +54,7 @@ pub async fn uptime(system: &System) -> WidgetDisplay {
     match system.uptime() {
         Ok(uptime) => {
             WidgetDisplay {
-                current: format!("Up for {} seconds", uptime.as_secs().to_string().parse::<f32>().expect("eh?") / 3600.0),
+                current: format!("Up for {} hours and {} minutes", uptime.as_secs() / 3600, (uptime.as_secs() - uptime.as_secs()/3600*3600) / 60),
                 next: None
             }
         },
@@ -73,13 +77,13 @@ pub async fn battery(system: &System) -> WidgetDisplay {
     }
 }
 
-pub async fn time(display: bool, merican: bool) -> String {
+pub async fn time(display: bool, merican: bool, color: &str) -> String {
     if display {
         let time = Utc::now();
         if merican {
-            time.format("%M-%D-%Y  %H:%M:%S").to_string()
+            color::get_painted(color, &time.format("%M-%D-%Y  %H:%M:%S").to_string()).await
         } else {
-            time.format("%D-%M-%Y  %H:%M:%S").to_string()
+            color::get_painted(color, &time.format("%D-%M-%Y  %H:%M:%S").to_string()).await
         }
     } else {
         "".to_string()
@@ -121,19 +125,25 @@ pub async fn sound_level() -> WidgetDisplay {
     }
 }
 
-/*  TODO: gpu usage */ /*
-pub async fn gpu_usage() -> String {
-
-} */
+/*  TODO: gpu usage */
+pub async fn gpu_usage() -> WidgetDisplay {
+    let info = active_gpu().unwrap().info().load_pct();
+    WidgetDisplay {
+        current: format!("GPU: {info}"),
+        next: None
+    }
+}
 
 pub async fn get(system: &System, widget: &Widget, last_next: Option<DelayedMeasurement<CPULoad>>) -> WidgetDisplay {
     let mut widget_display = match widget.widget_type.as_str() {
         "no" => WidgetDisplay { current: "".to_string(), next: None },
         "cu" => cpu_usage(system, last_next).await,
         "ct" => cpu_temp(system).await,
-        "gu" => todo!("sorry, it's not yet implemented..."),
+        "gu" => gpu_usage().await,
         "mu" => mem_usage(system).await,
         "up" => uptime(system).await,
+        "bt" => battery(system).await,
+        "sd" => sound_level().await,
         &_ => { throw_error(format!("Unexpected widget in your config file... Make sure it's well written or make it again with {}", color::get_painted("green", "easy_resources delete <set> && easy_resources make <set>").await).as_str(), 25); unreachable!()}
     };
     widget_display.current = color::get_painted(widget.color.as_str(), widget_display.current.as_str()).await;
