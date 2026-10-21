@@ -129,7 +129,6 @@ pub async fn run(mut config_dir: PathBuf, set: String) {
     let mut widgets: Vec<Widget> = Vec::new();
 
     let accessible_files = config::read(&config_dir).await;
-    dbg!("{&accessible_files}");
 
     let mut set_found = false;
     for file in accessible_files {
@@ -192,12 +191,12 @@ pub async fn run(mut config_dir: PathBuf, set: String) {
         // get the widget
         if widget_raw[0].eq("no") {
             widgets.push(Widget {widget_type: "no".to_string(), color: "black".to_string()}); // black is a fallback so it doesn't crash for whatever reason
-        }
-        if widget_raw.len() < 2 {
-            let error_message = format!("Something's weird with widget number {n}...");
+        } else if widget_raw.len() < 2 {
+            let error_message = format!("Something's weird with widget number {}...", n + 1);
             throw_error(error_message.as_str(), 15);
+        } else {
+            widgets.push(Widget {widget_type: widget_raw[0].to_string(), color: widget_raw[1].to_string()});
         }
-        widgets.push(Widget {widget_type: widget_raw[0].to_string(), color: widget_raw[1].to_string()});
     }
 
 

@@ -1,4 +1,4 @@
-use chrono::Utc;
+use chrono::Local;
 use gfxinfo::active_gpu;
 use systemstat::{Platform, System, saturating_sub_bytes};
 use systemstat::{DelayedMeasurement, CPULoad};
@@ -79,7 +79,7 @@ pub async fn battery(system: &System) -> WidgetDisplay {
 
 pub async fn time(display: bool, merican: bool, color: &str) -> String {
     if display {
-        let time = Utc::now();
+        let time = Local::now();
         if merican {
             color::get_painted(color, &time.format("%M-%D-%Y  %H:%M:%S").to_string()).await
         } else {
