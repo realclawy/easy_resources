@@ -35,17 +35,23 @@ pub async fn config() -> PathBuf {
  * the option ran
  * the set in which this is ran
 */
-pub async fn fetch_args() -> (String, String) {
+pub async fn fetch_args() -> (String, Option<String>) {
     let args: Vec<String> = env::args().collect();
-    let arg_num = args.len();
+    let arg_num = args.len() - 1;
     let mut args = args.into_iter();
     args.next(); // Consume the path thing
 
-    if arg_num == 3 { // the vector had an additional argument, which is the command call path
-        (args.next().unwrap(), args.next().unwrap())
-    } else if arg_num < 2 {
-        throw_error("not enough arguments provided", 3); unreachable!()
+    if arg_num == 1 {
+        let arg = args.next().unwrap().to_lowercase();
+        match arg.as_str() {
+            "help" | "h" | "-h" | "--help" | "list" | "ls" | "l" => { (arg, None) },
+            &_ => { throw_error("Not enough or incorrect arguments provided", 3); unreachable!() },
+        }
+    } else if arg_num == 2 { // the vector had an additional argument, which is the command call path
+        (args.next().unwrap(), Some(args.next().unwrap()))
+    } else if arg_num < 1 {
+        throw_error("Not enough arguments provided", 3); unreachable!()
     } else {
-        throw_error("too many arguments...", 4); unreachable!()
+        throw_error("Too many arguments...", 4); unreachable!()
     }
 }

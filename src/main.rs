@@ -20,10 +20,12 @@ async fn main() {
     let (option, set) = init::fetch_args().await;
 
     match option.as_str() {
-        "run" | "r" => options::run(config_dir, set).await,
-        "make" | "m" => options::make(config_dir, set).await,
-        "delete" | "d" => options::delete(config_dir, set).await,
-        "rename" => options::rename(config_dir, set).await,
+        "help" | "h" | "-h" | "--help" => options::print_help().await,
+        "list" | "ls" | "l" => options::list(config_dir).await,
+        "run" | "r" => options::run(config_dir, set.unwrap()).await,
+        "make" | "m" => options::make(config_dir, set.unwrap()).await,
+        "delete" | "d" => options::delete(config_dir, set.unwrap()).await,
+        "rename" => options::rename(config_dir, set.unwrap()).await,
         &_ => throw_error("option does not exist", 5)
     };
 }

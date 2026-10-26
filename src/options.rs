@@ -12,6 +12,44 @@ use systemstat::{Platform, System};
 use std::fs;
 use fs::File;
 
+
+pub async fn print_help() {
+println!(
+"usage: easy_resources COMMAND [COMMAND_OPTIONS]
+
+Make sets to define what you want to display on the terminal, and then run them!
+
+commands:
+    help: displays this message
+    list: lists all your sets
+    make <set>: makes a new set with the provided name
+    run <set>: runs a set
+    delete <set>: deletes a set
+    rename <set>: asks for a new name for the specified set
+
+Additional information:
+    Set location: ~/.config/easy_resources/<set>.conf
+    Report issues at: https://github.com/realclawy/easy_resources/issues
+"
+    );
+}
+
+pub async fn list(config_dir: PathBuf) {
+    let files = config::read(&config_dir).await;
+
+    if !files.is_empty() {
+        println!("Available sets:");
+        let mut iter_files = files.iter();
+        print!("{}", iter_files.next().unwrap());
+        for file in iter_files {
+            print!(", {file}")
+        }
+    } else {
+        print!("You have no sets made. Create one with easy_resources make <set_name>");
+    }
+    println!()
+}
+
 pub async fn delete(mut config_dir: PathBuf, set: String) {
     config_dir.push(set + ".conf");
 
@@ -80,11 +118,11 @@ pub async fn make(mut config_dir: PathBuf, set: String) {
             println!("What process would you like to show in slot number {i}?:");
             println!("cu: CPU usage");
             println!("ct: CPU temperature");
-            println!("gu: GPU usage (W.I.P)");
+            println!("gu: GPU usage");
             println!("mu: memory usage");
             println!("up: uptime");
             println!("bt: battery (only if you actually have a battery)");
-            println!("sd: sound level");
+            println!("sd: sound level (pipewire only)");
             println!("no: nothing");
             print!("answer with the 2-letter word: ");
             screen::flush();
