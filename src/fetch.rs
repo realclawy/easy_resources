@@ -3,7 +3,7 @@ use gfxinfo::active_gpu;
 use systemstat::{Platform, System, saturating_sub_bytes};
 use systemstat::{DelayedMeasurement, CPULoad};
 use std::process::Command;
-use crate::{color, structs::*};
+use crate::{structs::*};
 use crate::error_handling::*;
 
 pub async fn cpu_usage(system: &System, load: Option<DelayedMeasurement<CPULoad>>, color: &str) -> WidgetDisplay {
@@ -85,13 +85,13 @@ pub async fn battery(system: &System, color: &str) -> WidgetDisplay {
     }
 }
 
-pub async fn time(display: bool, merican: bool, color: &str) -> String {
+pub async fn time(display: bool, merican: bool, _color: &str) -> String {
     if display {
         let time = Local::now();
         if merican {
-            color::get_painted(color, &time.format("%M-%D-%Y  %H:%M:%S").to_string()).await
+            time.format("%M-%D-%Y  %H:%M:%S").to_string()
         } else {
-            color::get_painted(color, &time.format("%D-%M-%Y  %H:%M:%S").to_string()).await
+            time.format("%D-%M-%Y  %H:%M:%S").to_string()
         }
     } else {
         "".to_string()
@@ -145,7 +145,7 @@ pub async fn gpu_usage() -> WidgetDisplay {
 }
 
 pub async fn get(system: &System, widget: &Widget, last_next: Option<DelayedMeasurement<CPULoad>>) -> WidgetDisplay {
-    let mut widget_display = match widget.widget_type.as_str() {
+    match widget.widget_type.as_str() {
         "no" => WidgetDisplay { current: "".to_string(), color: "black".to_string(), next: None },
         "cu" => cpu_usage(system, last_next, &widget.color).await,
         "ct" => cpu_temp(system, &widget.color).await,
@@ -161,8 +161,6 @@ pub async fn get(system: &System, widget: &Widget, last_next: Option<DelayedMeas
         "up" => uptime(system, &widget.color).await,
         "bt" => battery(system, &widget.color).await,
         "sd" => sound_level(&widget.color).await,
-        &_ => { throw_error(format!("Unexpected widget in your config file... Make sure it's well written or make it again with {}", color::get_painted("green", "easy_resources delete <set> && easy_resources make <set>").await).as_str(), 25); unreachable!()}
-    };
-    widget_display.current = color::get_painted(widget.color.as_str(), widget_display.current.as_str()).await;
-    widget_display
+        &_ => { throw_error("Unexpected widget in your config file... Make sure it's well written or make it again with easy_resources delete <set> && easy_resources make <set>", 25); unreachable!()}
+    }
 }

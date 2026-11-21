@@ -16,70 +16,7 @@ use ratatui::{
 
 use crate::structs::WidgetDisplay;
 
-// Strip ANSI escape codes from a string
-fn strip_ansi_codes(text: &str) -> String {
-    // ANSI escape codes match the pattern: \x1b[...m or \x1b[...K etc.
-    let mut result = String::new();
-    let mut chars = text.chars().peekable();
-
-    while let Some(c) = chars.next() {
-        if c == '\x1b' {
-            // Skip until we find 'm' or 'K' or other ANSI terminators
-            let mut found_m = false;
-            while let Some(&next_char) = chars.peek() {
-                chars.next();
-                if next_char == 'm' || next_char == 'K' || next_char == 'J' {
-                    found_m = true;
-                    break;
-                }
-                if next_char.is_alphanumeric() || next_char == ';' || next_char == '<' || next_char == '=' || next_char == '>' {
-                    // Continue skipping
-                } else {
-                    break;
-                }
-            }
-            if !found_m && !result.is_empty() {
-                // If we didn't find a proper ANSI code terminator, restore the \x1b
-                result.push('\x1b');
-            }
-        } else {
-            result.push(c);
-        }
-    }
-
-    // Remove any remaining \x1b[m style codes more thoroughly
-    let mut clean_result = String::new();
-    let mut chars = result.chars().peekable();
-    while let Some(c) = chars.next() {
-        if c == '\x1b' {
-            if let Some(&next) = chars.peek() {
-                if next == '[' {
-                    let mut skip = true;
-                    while let Some(&next_char) = chars.peek() {
-                        chars.next();
-                        if next_char == 'm' {
-                            skip = false;
-                            break;
-                        }
-                        if next_char == 'K' || next_char == 'J' || next_char == 'A' || next_char == 'B' || next_char == 'C' || next_char == 'D' {
-                            skip = false;
-                            break;
-                        }
-                        if !next_char.is_ascii() || !next_char.is_alphanumeric() && next_char != ';' && next_char != '<' && next_char != '=' && next_char != '>' {
-                            break;
-                        }
-                    }
-                    if skip {
-                        continue;
-                    }
-                }
-            }
-        }
-        clean_result.push(c);
-    }
-
-    clean_result
-}
+// No need to strip ANSI codes since we're now applying colors via ratatui::style::Style
 
 // Convert color name to ratatui Color
 fn color_to_ratatui_color(color_name: &str) -> Color {
@@ -142,9 +79,7 @@ pub fn render(
             .split(size);
 
         // Date paragraph on the first line, left-aligned
-        // Strip ANSI codes from date string
-        let clean_date = strip_ansi_codes(date);
-        let date_text = Span::raw(clean_date.as_str());
+        let date_text = Span::raw(date.as_str());
 
         // Determine date color from the config
         let date_color_enum = color_to_ratatui_color(date_color);
@@ -217,8 +152,6 @@ pub fn render(
 
             // Create paragraphs for each widget with their individual colors
             for (i, widget) in widgets.iter().enumerate() {
-                let clean_widget = strip_ansi_codes(widget);
-
                 // Determine the color for this specific widget
                 let widget_color = match i {
                     0 => color_to_ratatui_color(&widget_1.color),
@@ -228,7 +161,7 @@ pub fn render(
                     _ => Color::White,
                 };
 
-                let widget_paragraph = Paragraph::new(clean_widget.as_str())
+                let widget_paragraph = Paragraph::new(widget.as_str())
                     .style(Style::default().fg(widget_color))
                     .alignment(Alignment::Left)
                     .wrap(Wrap { trim: true });
