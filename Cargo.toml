@@ -1,8 +1,7 @@
 [package]
 name = "easy_resources"
 version = "1.0.0"
-edition = "2026" # Why is cargo new's default 2024 anyway?
-
+edition = "2024" # ok so edition = "2026" crashes... cool
 [dependencies]
 chrono = "0.4.45"
 crossterm = "0.29.0"
