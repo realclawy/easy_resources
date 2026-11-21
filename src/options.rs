@@ -54,9 +54,11 @@ pub async fn delete(mut config_dir: PathBuf, set: String) {
     config_dir.push(set + ".conf");
 
     if config_dir.exists() {
-        fs::remove_file(config_dir).unwrap(); //  TODO: error handle it (I don't feel like doing so rn)
+        if let Err(e) = fs::remove_file(&config_dir) {
+            throw_error(format!("Failed to remove file: {}", e).as_str(), 23);
+        }
     } else {
-        throw_error("That file doesn't exist...", 5); unreachable!()
+        throw_error("That file doesn't exist...", 5);
     }
 }
 
@@ -64,18 +66,22 @@ pub async fn rename(config_dir: PathBuf, set: String) {
     let mut config_file = config_dir.clone();
     config_file.push(set + ".conf");
 
-    let mut new_name = String::new();
-    std::io::stdin().read_line(&mut new_name).expect("dude");
-    let new_name = path::PathBuf::from(format!("{:?}.conf", config_dir));
+    let mut new_name_str = String::new();
+    std::io::stdin().read_line(&mut new_name_str).expect("dude");
+    let new_name_str = new_name_str.trim().to_string();
+    let mut new_name = config_dir.clone();
+    new_name.push(new_name_str + ".conf");
 
     if config_file.exists() {
         if !new_name.exists() {
-            fs::rename(config_file, new_name).unwrap_or_else(|_| {throw_error("Couldn't rename it. This is likely a perms issue...", 22);});
+            if let Err(e) = fs::rename(&config_file, &new_name) {
+                throw_error(format!("Couldn't rename it. This is likely a perms issue: {}", e).as_str(), 22);
+            }
         } else {
-            throw_error("set that already has that name was found.", 6); unreachable!()
+            throw_error("set that already has that name was found.", 6);
         }
     } else {
-        throw_error("That set doesn't exist...", 5); unreachable!()
+        throw_error("That set doesn't exist...", 5);
     }
 }
 
@@ -152,12 +158,16 @@ pub async fn make(mut config_dir: PathBuf, set: String) {
 
     //  NOTE: create file
     config_dir.push(set + ".conf");
-    let mut config_file = File::create(config_dir).unwrap_or_else(|_| {
-        throw_error("couldn't create config file... This is likely a perms error", 10); unreachable!()
-    });
-    config_file.write_all(config_file_buffer.as_bytes()).unwrap_or_else(|_| {
-        throw_error("couldn't create config file... This is likely a perms error", 10); unreachable!()
-    });
+    let mut config_file = match File::create(&config_dir) {
+        Ok(file) => file,
+        Err(e) => {
+            throw_error(format!("couldn't create config file... This is likely a perms error: {}", e).as_str(), 10);
+            return;
+        }
+    };
+    if let Err(e) = config_file.write_all(config_file_buffer.as_bytes()) {
+        throw_error(format!("couldn't write to config file... This is likely a perms error: {}", e).as_str(), 10);
+    }
 }
 
 pub async fn run(mut config_dir: PathBuf, set: String) {
@@ -201,11 +211,11 @@ pub async fn run(mut config_dir: PathBuf, set: String) {
         .split(" ").collect();
 
     if date_raw.len() < 2 {
-        throw_error("The date in this set is... Weird... Check it out please", 15); unreachable!()
+        throw_error("The date in this set is... Weird... Check it out please", 15);
     }
     if !date_raw[1].eq("no") {
         if date_raw.len() < 3 {
-            throw_error("The date in this set is... Weird... Check it out please", 15); unreachable!()
+            throw_error("The date in this set is... Weird... Check it out please", 15);
         }
         date.display = true;
         if date_raw[1].eq("a") {
@@ -273,8 +283,6 @@ pub async fn run(mut config_dir: PathBuf, set: String) {
         if screen::check_quit(std::time::Duration::from_millis(1000)) {
             break;
         }
-
-        // Wait a sec before updating (async version =D)
 
         // update date and widgets
         (time_display, widget_1, widget_2, widget_3, widget_4) = tokio::join!(

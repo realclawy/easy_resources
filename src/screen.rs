@@ -16,30 +16,57 @@ use ratatui::{
 
 use crate::structs::WidgetDisplay;
 
-// No need to strip ANSI codes since we're now applying colors via ratatui::style::Style
-
 // Convert color name to ratatui Color
 fn color_to_ratatui_color(color_name: &str) -> Color {
     match color_name.to_lowercase().as_str() {
-        "black" => Color::Black,
-        "red" => Color::Red,
-        "green" => Color::Green,
-        "orange" => Color::Rgb(255, 165, 0), // Orange RGB
-        "blue" => Color::Blue,
-        "purple" => Color::Magenta,
-        "aqua" => Color::Cyan,
-        "white" => Color::White,
-        _ => Color::White, // Default fallback
+        "black" => Color::Rgb(0, 0, 0),
+        "red" => Color::Rgb(204, 24, 30),
+        "green" => Color::Rgb(16, 211, 26),
+        "orange" => Color::Rgb(255, 165, 0),
+        "blue" => Color::Rgb(29, 100, 224),
+        "purple" => Color::Rgb(123, 22, 191),
+        "aqua" => Color::Rgb(13, 224, 224),
+        "white" => Color::Rgb(250, 250, 250),
+        _ => Color::Rgb(250, 250, 250) // fallback
+    }
+}
+
+// Calculate the display width of a string
+fn display_width(s: &str) -> usize {
+    unicode_width::UnicodeWidthStr::width(s)
+}
+
+// Calculate the wrapped height of text given a width
+fn calculate_wrapped_height(text: &str, width: u16) -> u16 {
+    let width = width as usize;
+    if width == 0 {
+        return 0;
+    }
+
+    let mut height = 0;
+    for line in text.lines() {
+        let line_w = display_width(line);
+        if line_w == 0 {
+            height += 1;
+        } else {
+            height += line_w.div_ceil(width);
+        }
+    }
+
+    if height == 0 {
+        1 // At least 1 line for empty text
+    } else {
+        height as u16
     }
 }
 
 pub fn clear() {
     print!("\x1B[2J\x1B[H"); // This clears the screen and puts the cursor at the start
-    std::io::stdout().flush().unwrap();
+    flush();
 }
 
 pub fn flush() {
-    // flush is now handled by ratatui's terminal.draw()
+    std::io::stdout().flush().unwrap();
 }
 
 pub fn init() -> std::io::Result<Option<Terminal<CrosstermBackend<io::Stdout>>>> {
@@ -56,7 +83,7 @@ pub fn init() -> std::io::Result<Option<Terminal<CrosstermBackend<io::Stdout>>>>
 
 pub fn render(
     terminal: &mut Option<Terminal<CrosstermBackend<io::Stdout>>>,
-    date: &String,
+    date: &str,
     date_color: &str,
     widget_1: &WidgetDisplay,
     widget_2: &WidgetDisplay,
@@ -79,7 +106,7 @@ pub fn render(
             .split(size);
 
         // Date paragraph on the first line, left-aligned
-        let date_text = Span::raw(date.as_str());
+        let date_text = Span::raw(date);
 
         // Determine date color from the config
         let date_color_enum = color_to_ratatui_color(date_color);
@@ -88,11 +115,11 @@ pub fn render(
         frame.render_widget(date_paragraph, main_layout[0]);
 
         // Build the widgets text
-        let widgets: Vec<String> = vec![
-            widget_1.current.clone(),
-            widget_2.current.clone(),
-            widget_3.current.clone(),
-            widget_4.current.clone(),
+        let widgets: Vec<&str> = vec![
+            widget_1.current.as_str(),
+            widget_2.current.as_str(),
+            widget_3.current.as_str(),
+            widget_4.current.as_str(),
         ]
         .into_iter()
         .filter(|w| !w.is_empty())
@@ -101,20 +128,33 @@ pub fn render(
         // Calculate available space for centered widgets
         let widgets_layout_rect = main_layout[1];
 
-        // Find the maximum width among widgets to center them properly
-        let max_widget_width = widgets.iter().map(|w| {
-            // Handle potential multi-line widgets by taking the max line length
-            w.lines().map(|line| line.len()).max().unwrap_or(0)
-        }).max().unwrap_or(0) as u16;
+        // Calculate the actual wrapped height and max width for each widget
+        let mut widget_heights: Vec<u16> = Vec::new();
+        let mut max_widget_width = 0u16;
 
-        // Calculate the number of lines in the widgets block
+        for widget in &widgets {
+            // Calculate wrapped height for this widget using the available width
+            let available_width = widgets_layout_rect.width.saturating_sub(2); // Subtract 2 for padding
+            if available_width > 0 {
+                let h = calculate_wrapped_height(widget, available_width);
+                widget_heights.push(h);
+            } else {
+                widget_heights.push(1);
+            }
+
+            // Find the maximum display width among widgets to center them properly
+            let max_line_width = widget.lines().map(display_width).max().unwrap_or(0) as u16;
+            if max_line_width > max_widget_width {
+                max_widget_width = max_line_width;
+            }
+        }
+
+        // Calculate the total height needed for all widgets
+        let widgets_block_height: u16 = widget_heights.iter().sum();
         let num_widgets = widgets.len() as u16;
 
         // Create a layout to center the widgets block both horizontally and vertically
         if num_widgets > 0 {
-            // Calculate the height needed for all widgets
-            let widgets_block_height = num_widgets;
-
             // Create a centered layout for the widgets vertically
             let vertical_spacing_top = (widgets_layout_rect.height.saturating_sub(widgets_block_height)) / 2;
             let vertical_spacing_bottom = widgets_layout_rect.height.saturating_sub(widgets_block_height) - vertical_spacing_top;
@@ -142,16 +182,16 @@ pub fn render(
                     Constraint::Length(effective_width),
                     Constraint::Length(horizontal_spacing_right),
                 ])
-                .split(center_layout[2]);
+                .split(center_layout[1]);
 
-            // Create a layout for individual widget paragraphs
+            // Create a layout for individual widget paragraphs with dynamic heights
             let widget_layout = Layout::default()
                 .direction(Direction::Vertical)
-                .constraints((0..num_widgets).map(|_| Constraint::Length(1)).collect::<Vec<Constraint>>())
+                .constraints(widget_heights.iter().map(|&h| Constraint::Length(h)).collect::<Vec<Constraint>>())
                 .split(middle_layout[1]);
 
             // Create paragraphs for each widget with their individual colors
-            for (i, widget) in widgets.iter().enumerate() {
+            for (i, widget) in widgets.iter().copied().enumerate() {
                 // Determine the color for this specific widget
                 let widget_color = match i {
                     0 => color_to_ratatui_color(&widget_1.color),
@@ -161,7 +201,7 @@ pub fn render(
                     _ => Color::White,
                 };
 
-                let widget_paragraph = Paragraph::new(widget.as_str())
+                let widget_paragraph = Paragraph::new(widget)
                     .style(Style::default().fg(widget_color))
                     .alignment(Alignment::Left)
                     .wrap(Wrap { trim: true });
@@ -175,27 +215,24 @@ pub fn render(
 }
 
 pub fn check_quit(timeout: std::time::Duration) -> bool {
-    if poll(timeout).unwrap() {
-        if let Ok(Event::Key(key)) = read() {
-            if key.code == KeyCode::Esc
-                || key.code == KeyCode::Char('q')
-                || (key.code == KeyCode::Char('c') && key.modifiers == KeyModifiers::CONTROL)
+    if let Ok(Event::Key(key)) = read() && poll(timeout).unwrap_or(false) &&
+        (key.code == KeyCode::Esc
+         || key.code == KeyCode::Char('q')
+         || (key.code == KeyCode::Char('c') && key.modifiers == KeyModifiers::CONTROL))
             {
                 return true;
             }
-        }
-    }
     false
 }
 
 pub fn cleanup() -> std::io::Result<()> {
     // Initialize the terminal... Once more... (sorry this was the easiest fix)
-    let mut terminal = init().unwrap_or_else(|_| panic!("AHHH"));
+    let terminal = init()?;
     // Restore terminal
     disable_raw_mode()?;
     execute!(io::stdout(), LeaveAlternateScreen, DisableMouseCapture)?;
 
-    if let Some(mut terminal) = terminal.take() {
+    if let Some(mut terminal) = terminal {
         terminal.show_cursor()?;
     }
 

@@ -1,15 +1,14 @@
 [package]
 name = "easy_resources"
-version = "0.2.0"
-edition = "2024"
+version = "1.0.0"
+edition = "2026" # Why is cargo new's default 2024 anyway?
 
 [dependencies]
 chrono = "0.4.45"
 crossterm = "0.29.0"
-futures = "0.3.31"
 dirs = "7.0.0"
 gfxinfo = { version = "0.1.2", features = ["gpu_info"] }
 ratatui = "0.30.2"
 systemstat = "0.2.7"
 tokio = { version = "1.53.1", features = ["full"] }
-wgpu = "30.0.1"
+unicode-width = "0.2"

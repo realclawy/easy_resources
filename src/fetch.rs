@@ -9,8 +9,14 @@ use crate::error_handling::*;
 pub async fn cpu_usage(system: &System, load: Option<DelayedMeasurement<CPULoad>>, color: &str) -> WidgetDisplay {
     let mut current_usage = 0.0;
     if let Some(current_cpu) = load {
-        let current_cpu = current_cpu.done().unwrap(); //  TODO: Maybe this needs error handling?
-        current_usage = ((100.0 - current_cpu.idle * 100.0) * 10.0).round() / 10.0;
+        match current_cpu.done() {
+            Ok(cpu) => {
+                current_usage = ((100.0 - cpu.idle * 100.0) * 10.0).round() / 10.0;
+            }
+            Err(_) => {
+                throw_error("failed to measure CPU load...\n", 6); unreachable!()
+            }
+        }
     }
 
     match system.cpu_load_aggregate() {
@@ -89,16 +95,15 @@ pub async fn time(display: bool, merican: bool, _color: &str) -> String {
     if display {
         let time = Local::now();
         if merican {
-            time.format("%M-%D-%Y  %H:%M:%S").to_string()
+            time.format("%m-%d-%Y  %H:%M:%S").to_string()
         } else {
-            time.format("%D-%M-%Y  %H:%M:%S").to_string()
+            time.format("%d-%m-%Y  %H:%M:%S").to_string()
         }
     } else {
         "".to_string()
     }
 }
 
-// NOTE: I made this function with AI... I did check for it to not be trash tho
 // It's also Linux-only because I don't want to wrap my head around making this multiplatform
 // juuuuust yet... Maybe never actually...
 // NOTE: oh also I'd like to change the dependency to wpctl, but atm idc tbh
@@ -107,7 +112,7 @@ pub async fn sound_level(color: &str) -> WidgetDisplay {
         .args(["get", "Master"]).output();
 
     if let Ok(raw_alsa) = raw_alsa {
-        let alsa_output = unsafe { String::from_utf8_unchecked(raw_alsa.stdout) }; // The unsafe method was actually proposed by Neovim, not AI
+        let alsa_output = String::from_utf8_lossy(&raw_alsa.stdout);
         let alsa_line = alsa_output
             .lines()
             .find(|line| line.contains('%'))
@@ -136,11 +141,20 @@ pub async fn sound_level(color: &str) -> WidgetDisplay {
 
 /*  TODO: gpu usage */
 pub async fn gpu_usage() -> WidgetDisplay {
-    let info = active_gpu().unwrap().info().load_pct();
-    WidgetDisplay {
-        current: format!("GPU: {info}"),
-        color: "black".to_string(),
-        next: None
+    match active_gpu() {
+        Ok(gpu) => {
+            let usage = gpu.info().load_pct();
+            WidgetDisplay {
+                    current: format!("GPU: {usage}%"),
+                    color: "black".to_string(),
+                    next: None
+            }
+        },
+        Err(_) => WidgetDisplay {
+            current: "GPU: N/A".to_string(),
+            color: "black".to_string(),
+            next: None
+        }
     }
 }
 
@@ -161,6 +175,6 @@ pub async fn get(system: &System, widget: &Widget, last_next: Option<DelayedMeas
         "up" => uptime(system, &widget.color).await,
         "bt" => battery(system, &widget.color).await,
         "sd" => sound_level(&widget.color).await,
-        &_ => { throw_error("Unexpected widget in your config file... Make sure it's well written or make it again with easy_resources delete <set> && easy_resources make <set>", 25); unreachable!()}
+        &_ => { throw_error("Unexpected widget in your config file... Make sure it's well written or make it again with easy_resources delete <set> && easy_resources make <set>", 25); unreachable!() }
     }
 }
