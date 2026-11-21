@@ -35,7 +35,7 @@ Additional information:
 }
 
 pub async fn list(config_dir: PathBuf) {
-    let files = config::read(&config_dir).await;
+    let files = config::read(config_dir).await;
 
     if !files.is_empty() {
         println!("Available sets:");
@@ -166,7 +166,7 @@ pub async fn run(mut config_dir: PathBuf, set: String) {
     let mut date = Date { display: false, american: false, color: "black".to_string() };
     let mut widgets: Vec<Widget> = Vec::new();
 
-    let accessible_files = config::read(&config_dir).await;
+    let accessible_files = config::read(config_dir.clone()).await;
 
     let mut set_found = false;
     for file in accessible_files {
@@ -247,16 +247,32 @@ pub async fn run(mut config_dir: PathBuf, set: String) {
         fetch::get(&system, &widgets[3], None)
     );
 
+    // Initialize terminal
+    let screen_init = screen::init();
+    if let Err(e) = screen_init {
+        throw_error(format!("Failed to initialize terminal: {}", e).as_str(), 20); unreachable!()
+    }
+    let mut terminal = screen_init.unwrap();
 
-    //  TODO: display
+    // Main loop
     loop {
-        screen::display(
+        // Render the screen
+        if let Err(e) = screen::render(
+            &mut terminal,
             &time_display,
+            &date.color,
             &widget_1,
             &widget_2,
             &widget_3,
             &widget_4,
-        ).await;
+        ) {
+            throw_error(format!("Failed to render screen: {}", e).as_str(), 21);
+        }
+
+        // Check for quit key
+        if screen::check_quit(std::time::Duration::from_millis(1000)) {
+            break;
+        }
 
         // Wait a sec before updating (async version =D)
 
@@ -268,8 +284,10 @@ pub async fn run(mut config_dir: PathBuf, set: String) {
             fetch::get(&system, &widgets[2], widget_3.next),
             fetch::get(&system, &widgets[3], widget_4.next)
         );
-        tokio::time::sleep(
-            tokio::time::Duration::from_secs(1)
-        ).await;
+    }
+
+    // Cleanup terminal
+    if let Err(e) = screen::cleanup() {
+        throw_error(format!("Failed to cleanup terminal: {}", e).as_str(), 22);
     }
 }

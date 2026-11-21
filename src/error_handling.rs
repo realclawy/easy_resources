@@ -2,6 +2,7 @@ use std::io;
 
 use crate::ERROR;
 use crate::WARN;
+use crate::screen::flush;
 
 pub fn throw_error(error: &str, code: i32) {
     eprintln!("{ERROR} {error}");
@@ -10,6 +11,7 @@ pub fn throw_error(error: &str, code: i32) {
 
 pub async fn throw_warn_and_wait_for_confirmation(warning: &str) {
     eprintln!("{WARN} {warning}");
+    flush();
 
     match io::stdin().read_line(&mut String::new()) {
         Ok(_) => {},

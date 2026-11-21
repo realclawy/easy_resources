@@ -6,7 +6,7 @@ use std::process::Command;
 use crate::{color, structs::*};
 use crate::error_handling::*;
 
-pub async fn cpu_usage(system: &System, load: Option<DelayedMeasurement<CPULoad>>) -> WidgetDisplay {
+pub async fn cpu_usage(system: &System, load: Option<DelayedMeasurement<CPULoad>>, color: &str) -> WidgetDisplay {
     let mut current_usage = 0.0;
     if let Some(current_cpu) = load {
         let current_cpu = current_cpu.done().unwrap(); //  TODO: Maybe this needs error handling?
@@ -17,6 +17,7 @@ pub async fn cpu_usage(system: &System, load: Option<DelayedMeasurement<CPULoad>
         Ok(next_cpu) => {
             WidgetDisplay {
                 current: format!("CPU: {current_usage}%"),
+                color: color.to_string(),
                 next: Some(next_cpu)
             }
         }
@@ -25,10 +26,14 @@ pub async fn cpu_usage(system: &System, load: Option<DelayedMeasurement<CPULoad>
 }
 
 // TODO: find a way to make this work ig? It might be a my side error but idk
-pub async fn cpu_temp(system: &System) -> WidgetDisplay {
+pub async fn cpu_temp(system: &System, color: &str) -> WidgetDisplay {
     match system.cpu_temp() {
         Ok(temp) => {
-            WidgetDisplay { current: format!("CPU temp: {}°C", temp), next: None}
+            WidgetDisplay {
+                current: format!("CPU temp: {}°C", temp),
+                color: color.to_string(),
+                next: None
+            }
         },
         Err(_) => {
             throw_error("Could not get CPU temperature...", 19); unreachable!()
@@ -36,11 +41,12 @@ pub async fn cpu_temp(system: &System) -> WidgetDisplay {
     }
 }
 
-pub async fn mem_usage(system: &System) -> WidgetDisplay {
+pub async fn mem_usage(system: &System, color: &str) -> WidgetDisplay {
     match system.memory() {
         Ok(mem) => {
             WidgetDisplay {
                 current: format!("RAM: {} / {}", saturating_sub_bytes(mem.total, mem.free), mem.total),
+                color: color.to_string(),
                 next: None
             }
         },
@@ -50,11 +56,12 @@ pub async fn mem_usage(system: &System) -> WidgetDisplay {
     }
 }
 
-pub async fn uptime(system: &System) -> WidgetDisplay {
+pub async fn uptime(system: &System, color: &str) -> WidgetDisplay {
     match system.uptime() {
         Ok(uptime) => {
             WidgetDisplay {
                 current: format!("Up for {} hours and {} minutes", uptime.as_secs() / 3600, (uptime.as_secs() - uptime.as_secs()/3600*3600) / 60),
+                color: color.to_string(),
                 next: None
             }
         },
@@ -63,11 +70,12 @@ pub async fn uptime(system: &System) -> WidgetDisplay {
 }
 
 // Sorry to laptop users if this doesn't work...
-pub async fn battery(system: &System) -> WidgetDisplay {
+pub async fn battery(system: &System, color: &str) -> WidgetDisplay {
     match system.battery_life() {
         Ok(battery) => {
             WidgetDisplay {
                 current: format!("Battery: {}", battery.remaining_capacity * 100.0),
+                color: color.to_string(),
                 next: None
             }
         }
@@ -94,7 +102,7 @@ pub async fn time(display: bool, merican: bool, color: &str) -> String {
 // It's also Linux-only because I don't want to wrap my head around making this multiplatform
 // juuuuust yet... Maybe never actually...
 // NOTE: oh also I'd like to change the dependency to wpctl, but atm idc tbh
-pub async fn sound_level() -> WidgetDisplay {
+pub async fn sound_level(color: &str) -> WidgetDisplay {
     let raw_alsa = Command::new("amixer")
         .args(["get", "Master"]).output();
 
@@ -118,6 +126,7 @@ pub async fn sound_level() -> WidgetDisplay {
 
         WidgetDisplay {
             current: format!("Volume: {volume}"),
+            color: color.to_string(),
             next: None
         }
     } else {
@@ -130,20 +139,28 @@ pub async fn gpu_usage() -> WidgetDisplay {
     let info = active_gpu().unwrap().info().load_pct();
     WidgetDisplay {
         current: format!("GPU: {info}"),
+        color: "black".to_string(),
         next: None
     }
 }
 
 pub async fn get(system: &System, widget: &Widget, last_next: Option<DelayedMeasurement<CPULoad>>) -> WidgetDisplay {
     let mut widget_display = match widget.widget_type.as_str() {
-        "no" => WidgetDisplay { current: "".to_string(), next: None },
-        "cu" => cpu_usage(system, last_next).await,
-        "ct" => cpu_temp(system).await,
-        "gu" => gpu_usage().await,
-        "mu" => mem_usage(system).await,
-        "up" => uptime(system).await,
-        "bt" => battery(system).await,
-        "sd" => sound_level().await,
+        "no" => WidgetDisplay { current: "".to_string(), color: "black".to_string(), next: None },
+        "cu" => cpu_usage(system, last_next, &widget.color).await,
+        "ct" => cpu_temp(system, &widget.color).await,
+        "gu" => {
+            let gpu_display = gpu_usage().await;
+            WidgetDisplay {
+                current: gpu_display.current,
+                color: widget.color.clone(),
+                next: gpu_display.next
+            }
+        },
+        "mu" => mem_usage(system, &widget.color).await,
+        "up" => uptime(system, &widget.color).await,
+        "bt" => battery(system, &widget.color).await,
+        "sd" => sound_level(&widget.color).await,
         &_ => { throw_error(format!("Unexpected widget in your config file... Make sure it's well written or make it again with {}", color::get_painted("green", "easy_resources delete <set> && easy_resources make <set>").await).as_str(), 25); unreachable!()}
     };
     widget_display.current = color::get_painted(widget.color.as_str(), widget_display.current.as_str()).await;
