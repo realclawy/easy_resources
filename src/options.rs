@@ -137,7 +137,7 @@ pub async fn make(mut config_dir: PathBuf, set: String) {
             let process_to_show = process_to_show.trim().to_ascii_lowercase();
 
             match process_to_show.as_str() {
-                "cu"|"ct"|"mu"|"up"|"bt"|"sd" => {
+                "cu"|"ct"|"gu"|"mu"|"up"|"bt"|"sd" => {
                     let process_n_color = color::ask().await;
                     config_file_buffer.push_str((process_to_show.to_string() + " " + process_n_color.as_str() + "\n").as_str());
                     screen::clear();
